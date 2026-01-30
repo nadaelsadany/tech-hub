@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, combineLatest } from 'rxjs';
-import { Invoice, SplitEntry } from '../models/invoice.model';
+import { Invoice, SplitEntry, FeeLine, PaymentRecord, SplitAllocation } from '../models/invoice.model';
 import { WorkOrder } from '../models/work-order.model';
 import { AccountingService } from './accounting.service';
 import { StateService } from './state.service';
@@ -86,12 +86,12 @@ export class FinancialReportsService {
             if (filters.warranty !== undefined && wo.warranty !== filters.warranty) return;
 
             // Calculate fee breakdown
-            const visitFee = invoice.feeLines.filter(l => l.type === 'VISIT').reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-            const laborFee = invoice.feeLines.filter(l => l.type === 'LABOR').reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-            const partsFee = invoice.feeLines.filter(l => l.type === 'PART' || l.type === 'TOOL').reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-            const discounts = Math.abs(invoice.feeLines.filter(l => l.type === 'DISCOUNT').reduce((sum, l) => sum + (l.qty * l.unitPrice), 0));
-            const tax = invoice.feeLines.filter(l => l.type === 'TAX').reduce((sum, l) => sum + (l.qty * l.unitPrice), 0);
-            const paid = (invoice.payments || []).reduce((sum, p) => sum + p.amount, 0);
+            const visitFee = invoice.feeLines.filter((l: FeeLine) => l.type === 'VISIT').reduce((sum: number, l: FeeLine) => sum + (l.qty * l.unitPrice), 0);
+            const laborFee = invoice.feeLines.filter((l: FeeLine) => l.type === 'LABOR').reduce((sum: number, l: FeeLine) => sum + (l.qty * l.unitPrice), 0);
+            const partsFee = invoice.feeLines.filter((l: FeeLine) => l.type === 'PART' || l.type === 'TOOL').reduce((sum: number, l: FeeLine) => sum + (l.qty * l.unitPrice), 0);
+            const discounts = Math.abs(invoice.feeLines.filter((l: FeeLine) => l.type === 'DISCOUNT').reduce((sum: number, l: FeeLine) => sum + (l.qty * l.unitPrice), 0));
+            const tax = invoice.feeLines.filter((l: FeeLine) => l.type === 'TAX').reduce((sum: number, l: FeeLine) => sum + (l.qty * l.unitPrice), 0);
+            const paid = (invoice.payments || []).reduce((sum: number, p: PaymentRecord) => sum + p.amount, 0);
 
             const techName = this.getTechnicianName(wo.assignedTechnicianId);
 
@@ -194,15 +194,15 @@ export class FinancialReportsService {
             if (filters.siteIds && filters.siteIds.length > 0 && !filters.siteIds.includes(wo.siteId)) return;
             if (filters.providerId) {
                 // Check if this warranty allocation matches the provider
-                const warrantyAllocation = (invoice.allocations || []).find(a =>
+                const warrantyAllocation = (invoice.allocations || []).find((a: SplitAllocation) =>
                     a.party === 'WARRANTY' && a.accountId === filters.providerId
                 );
                 if (!warrantyAllocation) return;
             }
 
             // Calculate warranty and customer shares
-            const warrantyAllocation = (invoice.allocations || []).find(a => a.party === 'WARRANTY');
-            const customerAllocation = (invoice.allocations || []).find(a => a.party === 'CUSTOMER');
+            const warrantyAllocation = (invoice.allocations || []).find((a: SplitAllocation) => a.party === 'WARRANTY');
+            const customerAllocation = (invoice.allocations || []).find((a: SplitAllocation) => a.party === 'CUSTOMER');
 
             rows.push({
                 workOrderNumber: wo.number,
