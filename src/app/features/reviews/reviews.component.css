@@ -1,0 +1,30 @@
+.reviews-container {
+  padding: 24px;
+}
+
+.reviews-header {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reviews-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.filters-card {
+  margin-bottom: 16px;
+}
+
+.reviews-table {
+  background: white;
+  border-radius: 8px;
+}
+
+.text-muted {
+  color: #8c8c8c;
+  font-size: 12px;
+}

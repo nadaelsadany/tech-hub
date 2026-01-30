@@ -1,0 +1,398 @@
+<div class="reports-container">
+    <h2>Reports & Analytics</h2>
+
+    <nz-card>
+        <nz-tabs nzType="card">
+            <nz-tab nzTitle="Orders & Quality">
+                <div class="tab-content">
+                    <!-- Filters -->
+                    <nz-card nzTitle="Filters" class="filter-card">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <label>Date Range</label>
+                                <nz-range-picker [(ngModel)]="dateRange" style="width: 100%;"></nz-range-picker>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Site</label>
+                                <nz-select [(ngModel)]="selectedSites" nzMode="multiple" nzPlaceHolder="All Sites"
+                                    style="width: 100%;">
+                                    <nz-option *ngFor="let site of siteOptions" [nzValue]="site"
+                                        [nzLabel]="site"></nz-option>
+                                </nz-select>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Technician</label>
+                                <nz-select [(ngModel)]="selectedTechnicians" nzMode="multiple"
+                                    nzPlaceHolder="All Technicians" style="width: 100%;">
+                                    <nz-option *ngFor="let tech of technicianOptions" [nzValue]="tech.value"
+                                        [nzLabel]="tech.label"></nz-option>
+                                </nz-select>
+                            </div>
+                        </div>
+                        <div class="filter-actions">
+                            <button nz-button nzType="primary" (click)="loadReport()">Apply</button>
+                            <button nz-button (click)="clearFilters()">Clear</button>
+                        </div>
+                    </nz-card>
+
+                    <!-- KPI Cards -->
+                    <div *ngIf="kpiSnapshot$ | async as snapshot" class="kpi-section">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.ordersCompleted"
+                                        nzTitle="Orders Completed"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.reviewCoveragePct" nzSuffix="%"
+                                        nzTitle="Review Coverage"
+                                        [nzValueStyle]="{ color: snapshot.totals.reviewCoveragePct >= 80 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.avgReviewScore" nzSuffix="/100"
+                                        nzTitle="Avg Review Score"
+                                        [nzValueStyle]="{ color: snapshot.totals.avgReviewScore >= 70 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.firstTimeFixRatePct" nzSuffix="%"
+                                        nzTitle="First Time Fix Rate"
+                                        [nzValueStyle]="{ color: snapshot.totals.firstTimeFixRatePct >= 85 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                        </div>
+
+                        <!-- Secondary KPIs -->
+                        <div nz-row [nzGutter]="16" class="secondary-kpis">
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.avgResolutionTimeMin" nzSuffix=" min"
+                                        nzTitle="Avg Resolution Time"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.reviewSlaCompliancePct" nzSuffix="%"
+                                        nzTitle="Review SLA Compliance"
+                                        [nzValueStyle]="{ color: snapshot.totals.reviewSlaCompliancePct >= 90 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.reassignmentRatePct" nzSuffix="%"
+                                        nzTitle="Reassignment Rate"
+                                        [nzValueStyle]="{ color: snapshot.totals.reassignmentRatePct <= 10 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                        </div>
+
+                        <!-- Export Buttons -->
+                        <div class="export-actions">
+                            <nz-space>
+                                <button *nzSpaceItem nz-button (click)="exportCsv()">
+                                    <span nz-icon nzType="download"></span> Export CSV
+                                </button>
+                                <button *nzSpaceItem nz-button (click)="exportExcel()">
+                                    <span nz-icon nzType="file-excel"></span> Export Excel
+                                </button>
+                            </nz-space>
+                        </div>
+
+                        <!-- Completed Orders Table -->
+                        <nz-card nzTitle="Completed Orders" class="table-card">
+                            <nz-table #ordersTable [nzData]="workOrders" [nzPageSize]="10" nzSize="small">
+                                <thead>
+                                    <tr>
+                                        <th>Number</th>
+                                        <th>Customer</th>
+                                        <th>Technician</th>
+                                        <th>Completed At</th>
+                                        <th>Reviewed</th>
+                                        <th>Outcome</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let order of ordersTable.data">
+                                        <td>{{ order.number }}</td>
+                                        <td>{{ order.customer.name }}</td>
+                                        <td>{{ getTechName(order.assignedTechnicianId) }}</td>
+                                        <td>{{ formatDateTime(order.completedAt) }}</td>
+                                        <td>
+                                            <nz-tag [nzColor]="order.supervisorReviewId ? 'green' : 'default'">
+                                                {{ order.supervisorReviewId ? 'Yes' : 'Pending' }}
+                                            </nz-tag>
+                                        </td>
+                                        <td>
+                                            <nz-tag *ngIf="order.supervisorReviewOutcome" [nzColor]="'blue'">
+                                                {{ order.supervisorReviewOutcome }}
+                                            </nz-tag>
+                                            <span *ngIf="!order.supervisorReviewOutcome">-</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </nz-table>
+                        </nz-card>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <nz-tab nzTitle="Technician Performance">
+                <div class="tab-content">
+                    <!-- Filters -->
+                    <nz-card nzTitle="Filters" class="filter-card">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <label>Date Range</label>
+                                <nz-range-picker [(ngModel)]="dateRange" style="width: 100%;"></nz-range-picker>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Sites</label>
+                                <nz-select nzMode="multiple" [(ngModel)]="selectedSites" nzPlaceHolder="Select sites"
+                                    style="width: 100%;">
+                                    <nz-option *ngFor="let site of siteOptions" [nzLabel]="site"
+                                        [nzValue]="site"></nz-option>
+                                </nz-select>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Technicians</label>
+                                <nz-select nzMode="multiple" [(ngModel)]="selectedTechnicians"
+                                    nzPlaceHolder="Select technicians" style="width: 100%;">
+                                    <nz-option *ngFor="let tech of technicianOptions" [nzLabel]="tech.label"
+                                        [nzValue]="tech.value"></nz-option>
+                                </nz-select>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16" style="margin-top: 16px;">
+                            <div nz-col [nzSpan]="24">
+                                <nz-space>
+                                    <button *nzSpaceItem nz-button nzType="primary" (click)="loadReport()">Apply
+                                        Filters</button>
+                                    <button *nzSpaceItem nz-button (click)="clearFilters()">Clear</button>
+                                </nz-space>
+                            </div>
+                        </div>
+                    </nz-card>
+
+                    <div *ngIf="kpiSnapshot$ | async as snapshot">
+                        <!-- Summary KPIs -->
+                        <div nz-row [nzGutter]="16" class="kpi-section">
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.byTechnician?.length || 0"
+                                        nzTitle="Active Technicians"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.avgReviewScore" nzSuffix="/100"
+                                        nzTitle="Fleet Avg Score"
+                                        [nzValueStyle]="{ color: snapshot.totals.avgReviewScore >= 70 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="snapshot.totals.onTimeArrivalRatePct" nzSuffix="%"
+                                        nzTitle="Fleet On-Time %"
+                                        [nzValueStyle]="{ color: snapshot.totals.onTimeArrivalRatePct >= 85 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                        </div>
+
+                        <!-- Export Buttons -->
+                        <div class="export-actions">
+                            <nz-space>
+                                <button *nzSpaceItem nz-button (click)="exportTechnicianCsv()">
+                                    <span nz-icon nzType="download"></span> Export CSV
+                                </button>
+                                <button *nzSpaceItem nz-button (click)="exportTechnicianExcel()">
+                                    <span nz-icon nzType="file-excel"></span> Export Excel
+                                </button>
+                            </nz-space>
+                        </div>
+
+                        <!-- Technician Performance Table -->
+                        <nz-card nzTitle="Technician Performance Breakdown" class="table-card">
+                            <nz-table #techTable [nzData]="snapshot.byTechnician || []" [nzPageSize]="10"
+                                nzSize="small">
+                                <thead>
+                                    <tr>
+                                        <th>Technician</th>
+                                        <th>Completed</th>
+                                        <th>Reviewed</th>
+                                        <th>Avg Score</th>
+                                        <th>On-Time %</th>
+                                        <th>Follow-Ups</th>
+                                        <th>Reassignments</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let tech of techTable.data">
+                                        <td><strong>{{ tech.name }}</strong></td>
+                                        <td>{{ tech.completed }}</td>
+                                        <td>
+                                            <nz-tag
+                                                [nzColor]="tech.reviewed >= tech.completed * 0.8 ? 'green' : 'orange'">
+                                                {{ tech.reviewed }} ({{ getPercentage(tech.reviewed, tech.completed)
+                                                }}%)
+                                            </nz-tag>
+                                        </td>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <nz-rate [ngModel]="tech.reviewScoreAvg / 20" nzDisabled
+                                                    [nzAllowHalf]="true" style="font-size: 14px;"></nz-rate>
+                                                <span>{{ tech.reviewScoreAvg }}</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <nz-tag
+                                                [nzColor]="tech.onTimeArrivalPct >= 85 ? 'green' : tech.onTimeArrivalPct >= 70 ? 'orange' : 'red'">
+                                                {{ tech.onTimeArrivalPct }}%
+                                            </nz-tag>
+                                        </td>
+                                        <td>
+                                            <nz-tag [nzColor]="tech.followUpsNeeded === 0 ? 'green' : 'default'">
+                                                {{ tech.followUpsNeeded }}
+                                            </nz-tag>
+                                        </td>
+                                        <td>
+                                            <nz-tag
+                                                [nzColor]="tech.reassignmentRate <= 5 ? 'green' : tech.reassignmentRate <= 10 ? 'orange' : 'red'">
+                                                {{ tech.reassignmentRate }}%
+                                            </nz-tag>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </nz-table>
+                        </nz-card>
+                    </div>
+                </div>
+            </nz-tab>
+
+            <nz-tab nzTitle="Review SLA">
+                <div class="tab-content">
+                    <!-- Filters -->
+                    <nz-card nzTitle="Filters" class="filter-card">
+                        <div nz-row [nzGutter]="16">
+                            <div nz-col [nzSpan]="8">
+                                <label>Date Range</label>
+                                <nz-range-picker [(ngModel)]="dateRange" style="width: 100%;"></nz-range-picker>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Status</label>
+                                <nz-select nzMode="multiple" [(ngModel)]="selectedStatuses"
+                                    nzPlaceHolder="Select status" style="width: 100%;">
+                                    <nz-option nzLabel="Pending" nzValue="Pending"></nz-option>
+                                    <nz-option nzLabel="Completed" nzValue="Completed"></nz-option>
+                                    <nz-option nzLabel="Overdue" nzValue="Overdue"></nz-option>
+                                </nz-select>
+                            </div>
+                            <div nz-col [nzSpan]="8">
+                                <label>Technicians</label>
+                                <nz-select nzMode="multiple" [(ngModel)]="selectedTechnicians"
+                                    nzPlaceHolder="Select technicians" style="width: 100%;">
+                                    <nz-option *ngFor="let tech of technicianOptions" [nzLabel]="tech.label"
+                                        [nzValue]="tech.value"></nz-option>
+                                </nz-select>
+                            </div>
+                        </div>
+                        <div nz-row [nzGutter]="16" style="margin-top: 16px;">
+                            <div nz-col [nzSpan]="24">
+                                <nz-space>
+                                    <button *nzSpaceItem nz-button nzType="primary" (click)="loadReviewTasks()">Apply
+                                        Filters</button>
+                                    <button *nzSpaceItem nz-button (click)="clearReviewFilters()">Clear</button>
+                                </nz-space>
+                            </div>
+                        </div>
+                    </nz-card>
+
+                    <div *ngIf="filteredReviewTasks$ | async as tasks">
+                        <!-- SLA Summary KPIs -->
+                        <div nz-row [nzGutter]="16" class="kpi-section">
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="getTotalReviews(tasks)"
+                                        nzTitle="Total Reviews"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="getPendingReviews(tasks)" nzTitle="Pending"
+                                        [nzValueStyle]="{ color: getPendingReviews(tasks) > 5 ? '#cf1322' : '#3f8600' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="getOverdueReviews(tasks)" nzTitle="Overdue"
+                                        [nzValueStyle]="{ color: '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                            <div nz-col [nzSpan]="6">
+                                <nz-card>
+                                    <nz-statistic [nzValue]="getSlaCompliance(tasks)" nzSuffix="%"
+                                        nzTitle="SLA Compliance"
+                                        [nzValueStyle]="{ color: getSlaCompliance(tasks) >= 90 ? '#3f8600' : '#cf1322' }"></nz-statistic>
+                                </nz-card>
+                            </div>
+                        </div>
+
+                        <!-- Export Buttons -->
+                        <div class="export-actions">
+                            <nz-space>
+                                <button *nzSpaceItem nz-button (click)="exportReviewSlaCsv()">
+                                    <span nz-icon nzType="download"></span> Export CSV
+                                </button>
+                                <button *nzSpaceItem nz-button (click)="exportReviewSlaExcel()">
+                                    <span nz-icon nzType="file-excel"></span> Export Excel
+                                </button>
+                            </nz-space>
+                        </div>
+
+                        <!-- Review Tasks Table -->
+                        <nz-card nzTitle="Review Tasks" class="table-card">
+                            <nz-table #reviewTable [nzData]="tasks" [nzPageSize]="10" nzSize="small">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Technician</th>
+                                        <th>Assigned To</th>
+                                        <th>Created</th>
+                                        <th>Due</th>
+                                        <th>Status</th>
+                                        <th>Time Remaining</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let task of reviewTable.data">
+                                        <td>{{ task.workOrderNumber }}</td>
+                                        <td>{{ getTechName(task.technicianId) }}</td>
+                                        <td>{{ task.assignedToId ? task.assignedToId.slice(-4) : 'Unassigned' }}</td>
+                                        <td>{{ formatDateTime(task.createdAt) }}</td>
+                                        <td>{{ formatDateTime(task.dueAt) }}</td>
+                                        <td>
+                                            <nz-tag [nzColor]="getStatusColor(task.status)">
+                                                {{ task.status }}
+                                            </nz-tag>
+                                        </td>
+                                        <td>
+                                            <nz-tag *ngIf="task.status === 'Pending'"
+                                                [nzColor]="getStatusColor(task.status === 'Overdue' || getTimeRemaining(task.dueAt) < 0 ? 'Overdue' : task.status)">
+                                                {{ formatTimeRemaining(getTimeRemaining(task.dueAt)) }}
+                                            </nz-tag>
+                                            <span *ngIf="task.status !== 'Pending'">-</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </nz-table>
+                        </nz-card>
+                    </div>
+                </div>
+            </nz-tab>
+        </nz-tabs>
+    </nz-card>
+</div>

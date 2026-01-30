@@ -1,0 +1,139 @@
+<div class="reviews-container">
+    <!-- Header with stats -->
+    <div class="reviews-header">
+        <h2>Supervisor Reviews</h2>
+        <nz-space [nzSize]="16">
+            <ng-container *nzSpaceItem>
+                <nz-statistic [nzValue]="(pendingCount$ | async) || 0" nzTitle="Pending Reviews"
+                    [nzValueStyle]="{ color: '#1890ff' }"></nz-statistic>
+            </ng-container>
+            <ng-container *nzSpaceItem>
+                <nz-statistic [nzValue]="(overdueCount$ | async) || 0" nzTitle="Overdue"
+                    [nzValueStyle]="{ color: '#cf1322' }"></nz-statistic>
+            </ng-container>
+            <ng-container *nzSpaceItem>
+                <nz-statistic [nzValue]="(inReviewCount$ | async) || 0" nzTitle="In Review"
+                    [nzValueStyle]="{ color: '#52c41a' }"></nz-statistic>
+            </ng-container>
+        </nz-space>
+    </div>
+
+    <!-- Filters -->
+    <nz-card class="filters-card">
+        <nz-space [nzSize]="12">
+            <ng-container *nzSpaceItem>
+                <span>Status:</span>
+                <nz-select [(ngModel)]="selectedStatus" (ngModelChange)="onStatusFilterChange()" style="width: 150px">
+                    <nz-option *ngFor="let opt of statusOptions" [nzValue]="opt.value"
+                        [nzLabel]="opt.label"></nz-option>
+                </nz-select>
+            </ng-container>
+
+            <ng-container *nzSpaceItem>
+                <span>Outcome:</span>
+                <nz-select [(ngModel)]="selectedOutcome" (ngModelChange)="onOutcomeFilterChange()" nzAllowClear
+                    style="width: 180px" nzPlaceHolder="Select outcome">
+                    <nz-option nzValue="Approved" nzLabel="Approved"></nz-option>
+                    <nz-option nzValue="NeedsRework" nzLabel="Needs Rework"></nz-option>
+                    <nz-option nzValue="FollowUpRequired" nzLabel="Follow-Up Required"></nz-option>
+                    <nz-option nzValue="Rejected" nzLabel="Rejected"></nz-option>
+                </nz-select>
+            </ng-container>
+
+            <ng-container *nzSpaceItem>
+                <span>Completed Date:</span>
+                <nz-range-picker [(ngModel)]="dateRange" (ngModelChange)="onDateRangeChange()"></nz-range-picker>
+            </ng-container>
+
+            <ng-container *nzSpaceItem>
+                <button nz-button nzType="default" (click)="clearFilters()">
+                    Clear Filters
+                </button>
+            </ng-container>
+        </nz-space>
+    </nz-card>
+
+    <!-- Table -->
+    <nz-table #reviewTable [nzData]="(tableData$ | async) || []" [nzPageSize]="20" [nzShowPagination]="true"
+        [nzLoading]="false" class="reviews-table">
+        <thead>
+            <tr>
+                <th>WO Number</th>
+                <th>Customer</th>
+                <th>Technician</th>
+                <th>Completed At</th>
+                <th>Review Status</th>
+                <th>Outcome</th>
+                <th>Score</th>
+                <th>Due / Reviewed At</th>
+                <th>Supervisor</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let row of reviewTable.data">
+                <td>
+                    <a [routerLink]="['/orders']" [queryParams]="{ id: row.workOrderId }">
+                        {{ row.workOrder?.number || '-' }}
+                    </a>
+                </td>
+                <td>{{ (row.workOrder?.customer?.name) || '-' }}</td>
+                <td>{{ row.technicianName }}</td>
+                <td>
+                    <span *ngIf="row.workOrder?.completedAt">
+                        {{ row.workOrder!.completedAt | date: 'MMM d, y h:mm a' }}
+                    </span>
+                    <span *ngIf="!row.workOrder?.completedAt">-</span>
+                </td>
+                <td>
+                    <nz-tag [nzColor]="statusColors[row.status]">
+                        {{ statusLabels[row.status] }}
+                    </nz-tag>
+                    <nz-badge *ngIf="row.isOverdue" nzStatus="error" nzText="Overdue"
+                        style="margin-left: 8px"></nz-badge>
+                </td>
+                <td>
+                    <nz-tag *ngIf="row.reviewOutcome" [nzColor]="getOutcomeColor(row.reviewOutcome)">
+                        {{ getOutcomeLabel(row.reviewOutcome) }}
+                    </nz-tag>
+                    <span *ngIf="!row.reviewOutcome">-</span>
+                </td>
+                <td>
+                    <nz-rate *ngIf="row.reviewScore !== undefined" [ngModel]="row.reviewScore / 20" nzDisabled
+                        [nzAllowHalf]="true"></nz-rate>
+                    <span *ngIf="row.reviewScore === undefined">-</span>
+                </td>
+                <td>
+                    <div *ngIf="row.status === 'PENDING' || row.status === 'IN_REVIEW'">
+                        <nz-badge [nzStatus]="getTimeBadgeStatus(row.timeRemainingMs)"
+                            [nzText]="formatTimeRemaining(row.timeRemainingMs)"></nz-badge>
+                        <br />
+                        <small class="text-muted">{{ row.dueAt | date: 'MMM d, h:mm a' }}</small>
+                    </div>
+                    <div *ngIf="row.status === 'COMPLETED'">
+                        <span>{{ row.updatedAt | date: 'MMM d, y h:mm a' }}</span>
+                    </div>
+                </td>
+                <td>{{ row.supervisorName }}</td>
+                <td>
+                    <button nz-button nzType="primary" nzSize="small" (click)="openReviewForm(row)"
+                        [disabled]="row.status === 'COMPLETED' || row.status === 'EXPIRED'">
+                        <span *ngIf="row.status === 'PENDING'">Start Review</span>
+                        <span *ngIf="row.status === 'IN_REVIEW'">Continue</span>
+                        <span *ngIf="row.status === 'COMPLETED'">View</span>
+                        <span *ngIf="row.status === 'EXPIRED'">Expired</span>
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </nz-table>
+</div>
+
+<!-- Review Form Drawer (placeholder for now) -->
+<nz-drawer [nzVisible]="drawerVisible" [nzWidth]="600" nzTitle="Supervisor Review" (nzOnClose)="closeReviewForm()">
+    <div *nzDrawerContent>
+        <p>Review form will be implemented here.</p>
+        <p *ngIf="selectedTask">Work Order: {{ selectedTask.workOrderId }}</p>
+        <!-- TODO: Implement review form component -->
+    </div>
+</nz-drawer>
